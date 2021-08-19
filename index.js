@@ -1,6 +1,7 @@
 const express = require('express')
 const morgan = require('morgan')
 const cors = require('cors')
+require('dotenv').config()
 const app = express()
 
 morgan.token('body', req => JSON.stringify(req.body))
