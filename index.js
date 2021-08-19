@@ -1,7 +1,9 @@
+require('dotenv').config()
 const express = require('express')
 const morgan = require('morgan')
 const cors = require('cors')
-require('dotenv').config()
+const Person = require('./models/person.js')
+
 const app = express()
 
 morgan.token('body', req => JSON.stringify(req.body))
@@ -38,8 +40,11 @@ app.get('/', (request, response) => {
   response.send('<h1> Hello world </h1>')
 })
 
+// Gets all persons from the database
 app.get('/api/persons', (request, response) => {
-  response.json(persons)
+  Person.find({}).then(persons => {
+    response.json(persons)
+  })
 })
 
 app.get('/api/info', (request, response) => {
@@ -52,46 +57,26 @@ app.get('/api/info', (request, response) => {
 })
 
 app.get('/api/persons/:id', (request, response) => {
-  const id = Number(request.params.id)
-  const person = persons.find(p => p.id === id)
-  if (!person) { // id does not exist in the list
-    response.status(404).end()
-  } else { // person found!
+  Person.findById(request.params.id).then(person => {
     response.json(person)
-  }
+  })
 })
-
-const generateId = () => {
-  // largest id number in the current list
-  const maxID = persons.length > 0
-    ? Math.max(...persons.map(p => p.id))
-    : 0
-  return maxID + 1
-}
 
 app.post('/api/persons', (request, response) => {
   const body = request.body
 
-  if (!body.name || !body.number) {
+  if (!body.name || !body.number) { // Checks for undefined name or number
     return response.status(400).json({
       error: 'number or name missing'
     })
   }
 
-  if (persons.some(p => p.name === body.name)) {
-    return response.status(400).json({
-      error: 'name must be unique'
-    })
-  }
-
-  const person = {
-    id: generateId(),
+  const person = new Person({
     name: body.name,
     number: body.number
-  }
-  persons = persons.concat(person)
+  })
 
-  response.json(person)
+  person.save().then(savedPerson => response.json(savedPerson))
 })
 
 app.delete('/api/persons/:id', (request, response) => {
@@ -107,7 +92,7 @@ const unknownEndpoint = (request, response) => {
 // Error handler
 app.use(unknownEndpoint)
 
-const PORT = process.env.PORT || 3001
+const PORT = process.env.PORT
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`)
 })
